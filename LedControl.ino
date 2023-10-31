@@ -39,9 +39,9 @@
 
 #define LED_PIN D0  // Pin for the LED
 
-#define LED_BUTTON_DATASTREAM V0  // Widget for LED control
-#define LED_SLIDER_DATASTREAM V1        
-#define LED_TIMER_DATASTREAM V2        // Widget for LED timer
+#define LED_BUTTON_DATASTREAM V0  // Button Widget (Integer): 0-1
+#define LED_SLIDER_DATASTREAM V1  // Slider Widget (Integer): 0-255   
+#define LED_TIMER_DATASTREAM V2    // Timer Widget
 
 #include "BlynkEdgent.h"
 #include <TimeLib.h>
