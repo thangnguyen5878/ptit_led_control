@@ -39,15 +39,17 @@
 
 #define LED_PIN D0  // Pin for the LED
 
-#define LED_CONTROL_PIN V0  // Widget for LED control
-#define LED_TIMER V2        // Widget for LED timer
+#define LED_BUTTON_DATASTREAM V0  // Widget for LED control
+#define LED_SLIDER_DATASTREAM V1        
+#define LED_TIMER_DATASTREAM V2        // Widget for LED timer
 
 #include "BlynkEdgent.h"
 #include <TimeLib.h>
 
 BlynkTimer timer;
 
-bool led;
+int slider;
+bool button; // trạng thái nút nhấn ảo (0: tắt, 1: bật)
 long timer_start = 0xFFFF; // thời điểm đèn bắt đầu sáng (tính bằng giây)
 long timer_stop = 0xFFFF;   // thời điểm đèn ngừng sáng (tính bằng giây)
 unsigned char weekday_option;
@@ -55,26 +57,33 @@ unsigned char weekday_option;
 long rtc_sec; // thời điểm hiện tại (tính bằng giây)
 unsigned char day_of_week;
 
-bool led_status; // trạng thái của led và nút nhấn ảo (0: tắt, 1: bật)
-bool update_blynk_status;
-bool led_timer_on_set;
+bool led; // trạng thái của led (0: tắt, 1: bật)
+bool update_blynk_status; // update_blynk_status = 1, cập nhật trạng thái của led cho nút nhấn ảo 
+bool is_timer_on; // is_timer_on = 1, đèn sáng theo cài đặt của timer
 
 // #########################################################################################################
-// LED 1
-BLYNK_WRITE(LED_CONTROL_PIN) {
+// Button (Integer): 0-1
+BLYNK_WRITE(LED_BUTTON_DATASTREAM) {
   int val = param.asInt();
   // Nếu không trong thời gian của timer, có thể dùng nút nhấn để điều khiển led
-  if (led_timer_on_set == 0)
-    led = val; 
+  if (is_timer_on == 0)
+    button = val; 
   // khi đang trong thời gian của timer thì không thể nhấn nút ảo để điều khiển led
   else
     update_blynk_status = 1; // cập nhật trạng thái của led cho nút ảo
 }
 
-// #########################################################################################################
-// Timer 1
-BLYNK_WRITE(LED_TIMER) {
-  unsigned char week_day;
+// Slider (Integer) 0 -> 255
+BLYNK_WRITE(LED_SLIDER_DATASTREAM) {
+    slider = param.asInt();
+    Serial.print(slider);
+    if(button == 1)
+    analogWrite(LED_PIN, slider);
+}
+
+// Timer
+BLYNK_WRITE(LED_TIMER_DATASTREAM) {
+  unsigned char week_day; // biến tạm thời xử lý trong hàm
 
   TimeInputParam t(param);
 
@@ -112,6 +121,7 @@ BLYNK_WRITE(InternalPinRTC) {
 
     day_of_week = weekday();
 
+    // 1-7: Thứ hai -> chủ nhật
     if (day_of_week == 1)
       day_of_week = 7;
     else
@@ -138,7 +148,7 @@ void checkTime() {
 // #########################################################################################################
 void led_mng() {
   bool old_led_status;
-  old_led_status = led_status;
+  old_led_status = led;
 
 
   if (timer_start != 0xFFFF && timer_stop != 0xFFFF) {
@@ -150,30 +160,36 @@ void led_mng() {
           || ((timer_start >= timer_stop) && ((rtc_sec >= timer_start) || (rtc_sec < timer_stop)))
         ) && (weekday_option == 0x00 || (weekday_option & (0x01 << (day_of_week - 1)))))) 
     {
-      led_timer_on_set = 1;
+      is_timer_on = 1;
     } else
-      led_timer_on_set = 0;
+      is_timer_on = 0;
   } else
-    led_timer_on_set = 0;
+    is_timer_on = 0;
 
-  if (led_timer_on_set) {
-    led_status = 1;
-    led = 0;
+ 
+  if (is_timer_on) {
+    led = 1;
+    button = 0;
   } else {
-    led_status = led;
+    led = button;
   }
 
-  if (old_led_status != led_status)
+  if (old_led_status != led)
     update_blynk_status = 1;
 
   // HARDWARE CONTROL
-  digitalWrite(LED_PIN, led_status); // thay đổi trạng thái Led
+  if(led == 1) {
+    analogWrite(LED_PIN, slider);
+  } else {
+    digitalWrite(LED_PIN,LOW);
+  }
+   // thay đổi trạng thái Led
 }
 
 // cập nhật trạng thái nút nhấn áo tương ứng với trạng thái của led
 void blynk_update() {
   if (update_blynk_status) {
-    Blynk.virtualWrite(LED_CONTROL_PIN, led_status); // thay đổi trạng thái nút nhấn ảo
+    Blynk.virtualWrite(LED_BUTTON_DATASTREAM, led); 
     update_blynk_status = 0; // đã update xong, chuyển về 0
   }
 }
