@@ -1,24 +1,3 @@
-/*************************************************************
-  Blynk is a platform with iOS and Android apps to control
-  ESP32, Arduino, Raspberry Pi and the likes over the Internet.
-  You can easily build mobile and web interfaces for any
-  projects by simply dragging and dropping widgets.
-
-    Downloads, docs, tutorials: https://www.blynk.io
-    Sketch generator:           https://examples.blynk.cc
-    Blynk community:            https://community.blynk.cc
-    Follow us:                  https://www.fb.com/blynkapp
-                                https://twitter.com/blynk_app
-
-  Blynk library is licensed under MIT license
- *************************************************************
-  Blynk.Edgent implements:
-  - Blynk.Inject - Dynamic WiFi credentials provisioning
-  - Blynk.Air    - Over The Air firmware updates
-  - Device state indication using a physical LED
-  - Credentials reset using a physical Button
- *************************************************************/
-
 /* Fill in information from your Blynk Template here */
 /* Read more: https://bit.ly/BlynkInject */
 #define BLYNK_TEMPLATE_ID "TMPL6lwrbAEGk"
@@ -38,28 +17,96 @@
 //#define USE_WEMOS_D1_MINI
 
 #define LED_PIN D0  // Pin for the LED
+#define LED2_PIN D2
+#define LED3_PIN D3
+
+#define LIGHT_SENSOR_PIN A0
+#define PIR_SENSOR_PIN D8
 
 #define LED_BUTTON_DATASTREAM V0  // Button Widget (Integer): 0-1
-#define LED_SLIDER_DATASTREAM V1  // Slider Widget (Integer): 0-255   
-#define LED_TIMER_DATASTREAM V2    // Timer Widget
+#define LED_SLIDER_DATASTREAM V1  // Slider Widget (Integer): 0-255
+#define LED_TIMER_DATASTREAM V2   // Timer Widget
+#define LIGHT_SENSOR_DATASTREAM V3   
+#define PIR_SENSOR_DATASTREAM V4   
+#define PIR_SENSOR_VALUE_DATASTREAM V5   
 
+#include <ESP8266WiFi.h>
+// #include <BlynkSimpleEsp8266.h>
 #include "BlynkEdgent.h"
 #include <TimeLib.h>
+// #include <BlynkSimpleEsp8266.h>
 
 BlynkTimer timer;
 
 int slider;
-bool button; // trạng thái nút nhấn ảo (0: tắt, 1: bật)
-long timer_start = 0xFFFF; // thời điểm đèn bắt đầu sáng (tính bằng giây)
+bool button;                // trạng thái nút nhấn ảo (0: tắt, 1: bật)
+long timer_start = 0xFFFF;  // thời điểm đèn bắt đầu sáng (tính bằng giây)
 long timer_stop = 0xFFFF;   // thời điểm đèn ngừng sáng (tính bằng giây)
 unsigned char weekday_option;
 
-long rtc_sec; // thời điểm hiện tại (tính bằng giây)
+// light sensor
+int lightSensor;
+int lightSensorPercentage;
+
+// pir sensor
+int pirSensor;
+
+long rtc_sec;  // thời điểm hiện tại (tính bằng giây)
 unsigned char day_of_week;
 
-bool led; // trạng thái của led (0: tắt, 1: bật)
-bool update_blynk_status; // update_blynk_status = 1, cập nhật trạng thái của led cho nút nhấn ảo 
-bool is_timer_on; // is_timer_on = 1, đèn sáng theo cài đặt của timer
+bool led;                  // trạng thái của led (0: tắt, 1: bật)
+bool update_blynk_status;  // update_blynk_status = 1, cập nhật trạng thái của led cho nút nhấn ảo
+bool is_timer_on;          // is_timer_on = 1, đèn sáng theo cài đặt của timer
+
+// #########################################################################################################
+void setup() {
+  Serial.begin(115200);
+  delay(100);
+
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(LED2_PIN, OUTPUT);
+  pinMode(LED3_PIN, OUTPUT);
+
+  pinMode(LIGHT_SENSOR_PIN, INPUT);
+  pinMode(PIR_SENSOR_PIN, INPUT);
+
+  digitalWrite(LED_PIN, LOW);
+  digitalWrite(LED2_PIN, LOW);
+  digitalWrite(LED3_PIN, LOW);
+
+  BlynkEdgent.begin();
+  timer.setInterval(10000L, checkTime);
+}
+
+// #########################################################################################################
+void loop() {
+    // led 1
+  BlynkEdgent.run();
+  timer.run();
+  led_mng();
+  blynk_update();
+
+    // led 2 - light sensor
+  lightSensor = analogRead(LIGHT_SENSOR_PIN);  // doc gia tri cam bien 0-1023
+  lightSensorPercentage = map(lightSensor, 0, 1023, 100, 0);
+  Blynk.virtualWrite(LIGHT_SENSOR_DATASTREAM, lightSensorPercentage);
+  if (lightSensorPercentage <= 20) {
+    digitalWrite(LED2_PIN, HIGH);
+  } else {  //nguoc lai
+    digitalWrite(LED2_PIN, LOW);
+  }
+
+  // led 3 - pir sensor
+  pirSensor = digitalRead(PIR_SENSOR_PIN);
+  if(pirSensor == 1) {
+    digitalWrite(LED3_PIN, HIGH);
+    Blynk.virtualWrite(PIR_SENSOR_DATASTREAM, HIGH);
+  } else {
+    digitalWrite(LED3_PIN, LOW);
+    Blynk.virtualWrite(PIR_SENSOR_DATASTREAM, LOW);
+  }  
+}
+
 
 // #########################################################################################################
 // Button (Integer): 0-1
@@ -67,23 +114,23 @@ BLYNK_WRITE(LED_BUTTON_DATASTREAM) {
   int val = param.asInt();
   // Nếu không trong thời gian của timer, có thể dùng nút nhấn để điều khiển led
   if (is_timer_on == 0)
-    button = val; 
+    button = val;
   // khi đang trong thời gian của timer thì không thể nhấn nút ảo để điều khiển led
   else
-    update_blynk_status = 1; // cập nhật trạng thái của led cho nút ảo
+    update_blynk_status = 1;  // cập nhật trạng thái của led cho nút ảo
 }
 
 // Slider (Integer) 0 -> 255
 BLYNK_WRITE(LED_SLIDER_DATASTREAM) {
-    slider = param.asInt();
-    Serial.print(slider);
-    if(button == 1)
+  slider = param.asInt();
+  Serial.print(slider);
+  if (button == 1)
     analogWrite(LED_PIN, slider);
 }
 
 // Timer
 BLYNK_WRITE(LED_TIMER_DATASTREAM) {
-  unsigned char week_day; // biến tạm thời xử lý trong hàm
+  unsigned char week_day;  // biến tạm thời xử lý trong hàm
 
   TimeInputParam t(param);
 
@@ -156,17 +203,16 @@ void led_mng() {
     if (
       (
         (
-          ((timer_start <= timer_stop) && (rtc_sec >= timer_start) && (rtc_sec < timer_stop)) 
-          || ((timer_start >= timer_stop) && ((rtc_sec >= timer_start) || (rtc_sec < timer_stop)))
-        ) && (weekday_option == 0x00 || (weekday_option & (0x01 << (day_of_week - 1)))))) 
-    {
+          ((timer_start <= timer_stop) && (rtc_sec >= timer_start) && (rtc_sec < timer_stop))
+          || ((timer_start >= timer_stop) && ((rtc_sec >= timer_start) || (rtc_sec < timer_stop))))
+        && (weekday_option == 0x00 || (weekday_option & (0x01 << (day_of_week - 1)))))) {
       is_timer_on = 1;
     } else
       is_timer_on = 0;
   } else
     is_timer_on = 0;
 
- 
+
   if (is_timer_on) {
     led = 1;
     button = 0;
@@ -178,38 +224,19 @@ void led_mng() {
     update_blynk_status = 1;
 
   // HARDWARE CONTROL
-  if(led == 1) {
+  if (led == 1) {
     analogWrite(LED_PIN, slider);
   } else {
-    digitalWrite(LED_PIN,LOW);
+    digitalWrite(LED_PIN, LOW);
   }
-   // thay đổi trạng thái Led
+  // thay đổi trạng thái Led
 }
 
 // cập nhật trạng thái nút nhấn áo tương ứng với trạng thái của led
 void blynk_update() {
   if (update_blynk_status) {
-    Blynk.virtualWrite(LED_BUTTON_DATASTREAM, led); 
-    update_blynk_status = 0; // đã update xong, chuyển về 0
+    Blynk.virtualWrite(LED_BUTTON_DATASTREAM, led);
+    update_blynk_status = 0;  // đã update xong, chuyển về 0
   }
 }
 
-// #########################################################################################################
-void setup() {
-  Serial.begin(115200);
-  delay(100);
-
-  pinMode(LED_PIN, OUTPUT);
-
-
-  BlynkEdgent.begin();
-  timer.setInterval(10000L, checkTime);
-}
-
-// #########################################################################################################
-void loop() {
-  BlynkEdgent.run();
-  timer.run();
-  led_mng();
-  blynk_update();
-}
