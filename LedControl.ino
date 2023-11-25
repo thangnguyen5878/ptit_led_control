@@ -1,12 +1,10 @@
-/* Fill in information from your Blynk Template here */
-/* Read more: https://bit.ly/BlynkInject */
 #define BLYNK_TEMPLATE_ID "TMPL6lwrbAEGk"
 #define BLYNK_TEMPLATE_NAME "LedControl2"
 
 #define BLYNK_FIRMWARE_VERSION "0.1.0"
 
 #define BLYNK_PRINT Serial
-//#define BLYNK_DEBUG
+//#define BLYNK_DEBUG 
 
 #define APP_DEBUG
 
@@ -18,10 +16,12 @@
 
 #define LED_PIN D0  // Pin for the LED
 #define LED2_PIN D2
-#define LED3_PIN D3
+// #define LED3_PIN D3
+int LED3_PIN = 14; // D5
 
 #define LIGHT_SENSOR_PIN A0
-#define PIR_SENSOR_PIN D8
+//#define PIR_SENSOR_PIN D1
+int PIR_SENSOR_PIN = 5;  // D1
 
 #define LED_BUTTON_DATASTREAM V0  // Button Widget (Integer): 0-1
 #define LED_SLIDER_DATASTREAM V1  // Slider Widget (Integer): 0-255
@@ -31,10 +31,8 @@
 #define PIR_SENSOR_VALUE_DATASTREAM V5   
 
 #include <ESP8266WiFi.h>
-// #include <BlynkSimpleEsp8266.h>
 #include "BlynkEdgent.h"
 #include <TimeLib.h>
-// #include <BlynkSimpleEsp8266.h>
 
 BlynkTimer timer;
 
@@ -86,6 +84,7 @@ void loop() {
   led_mng();
   blynk_update();
 
+// TODO: Sửa lại đọc giá trị của cảm biến chuyển động từ 0 đến 100
     // led 2 - light sensor
   lightSensor = analogRead(LIGHT_SENSOR_PIN);  // doc gia tri cam bien 0-1023
   lightSensorPercentage = map(lightSensor, 0, 1023, 100, 0);
@@ -98,9 +97,10 @@ void loop() {
 
   // led 3 - pir sensor
   pirSensor = digitalRead(PIR_SENSOR_PIN);
-  if(pirSensor == 1) {
+  if(pirSensor == HIGH ) {
     digitalWrite(LED3_PIN, HIGH);
     Blynk.virtualWrite(PIR_SENSOR_DATASTREAM, HIGH);
+    delay(1000);
   } else {
     digitalWrite(LED3_PIN, LOW);
     Blynk.virtualWrite(PIR_SENSOR_DATASTREAM, LOW);
@@ -122,8 +122,10 @@ BLYNK_WRITE(LED_BUTTON_DATASTREAM) {
 
 // Slider (Integer) 0 -> 255
 BLYNK_WRITE(LED_SLIDER_DATASTREAM) {
+  // Đọc giá trị của slider trên app Blynk
   slider = param.asInt();
   Serial.print(slider);
+  // Nếu LED đang sáng thì mới có thể thay đổi độ sáng
   if (button == 1)
     analogWrite(LED_PIN, slider);
 }
