@@ -14,7 +14,6 @@
 #define LED2_PIN D2 // Chân cho LED 2
 #define LED3_PIN D5 // Chân cho LED 3
 
-
 // Định nghĩa các chân cho cảm biến
 #define LIGHT_SENSOR_PIN A0 // Chân cho cảm biến ánh sáng
 #define PIR_SENSOR_PIN D1 // Chân cho cảm biến chuyển động (D1)
