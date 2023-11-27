@@ -1,6 +1,6 @@
+// Định nghĩa template ID, tên và phiên bản firmware của Blynk
 #define BLYNK_TEMPLATE_ID "TMPL6lwrbAEGk"
 #define BLYNK_TEMPLATE_NAME "LedControl2"
-
 #define BLYNK_FIRMWARE_VERSION "0.1.0"
 
 #define BLYNK_PRINT Serial
@@ -8,21 +8,22 @@
 
 #define APP_DEBUG
 
-// Uncomment your board, or configure a custom board in Settings.h
+// Chọn board sử dụng hoặc cấu hình board tùy chỉnh trong Settings.h
 //#define USE_SPARKFUN_BLYNK_BOARD
 #define USE_NODE_MCU_BOARD
 //#define USE_WITTY_CLOUD_BOARD
 //#define USE_WEMOS_D1_MINI
 
-#define LED_PIN D0  // Pin for the LED
-#define LED2_PIN D2
-// #define LED3_PIN D3
-int LED3_PIN = 14; // D5
+// Định nghĩa các chân cho LED và cảm biến
+#define LED_PIN D0  // Chân cho LED
+#define LED2_PIN D2 // Chân cho LED thứ 2
+int LED3_PIN = 14; // Chân cho LED thứ 3 (D5)
 
-#define LIGHT_SENSOR_PIN A0
+#define LIGHT_SENSOR_PIN A0 // Chân cho cảm biến ánh sáng
 //#define PIR_SENSOR_PIN D1
-int PIR_SENSOR_PIN = 5;  // D1
+int PIR_SENSOR_PIN = 5;  // Chân cho cảm biến chuyển động (D1)
 
+// Định nghĩa các datastream cho Blynk
 #define LED_BUTTON_DATASTREAM V0  // Button Widget (Integer): 0-1
 #define LED_SLIDER_DATASTREAM V1  // Slider Widget (Integer): 0-255
 #define LED_TIMER_DATASTREAM V2   // Timer Widget
@@ -36,47 +37,58 @@ int PIR_SENSOR_PIN = 5;  // D1
 
 BlynkTimer timer;
 
+// Biến cho Slider và Button
 int slider;
-bool button;                // trạng thái nút nhấn ảo (0: tắt, 1: bật)
-long timer_start = 0xFFFF;  // thời điểm đèn bắt đầu sáng (tính bằng giây)
-long timer_stop = 0xFFFF;   // thời điểm đèn ngừng sáng (tính bằng giây)
-unsigned char weekday_option;
+bool button;  // Trạng thái nút nhấn ảo (0: tắt, 1: bật)
 
-// light sensor
+// Biến cho Timer
+long timer_start = 0xFFFF;  // Thời điểm đèn bắt đầu sáng (tính bằng giây)
+long timer_stop = 0xFFFF;   // Thời điểm đèn ngừng sáng (tính bằng giây)
+unsigned char weekday_option; // Lựa chọn ngày trong tuần
+
+// Biến cho cảm biến ánh sáng
 int lightSensor;
 int lightSensorPercentage;
 
-// pir sensor
+// Biến cho cảm biến chuyển động
 int pirSensor;
 
-long rtc_sec;  // thời điểm hiện tại (tính bằng giây)
+// Biến thời gian
+long rtc_sec;  // Thời điểm hiện tại (tính bằng giây)
 unsigned char day_of_week;
 
-bool led;                  // trạng thái của led (0: tắt, 1: bật)
-bool update_blynk_status;  // update_blynk_status = 1, cập nhật trạng thái của led cho nút nhấn ảo
-bool is_timer_on;          // is_timer_on = 1, đèn sáng theo cài đặt của timer
+// Biến cho LED
+bool led;                  // Trạng thái của LED (0: tắt, 1: bật)
+
+// Biến quản lý cập nhật Blynk
+bool update_blynk_status;  // update_blynk_status = 1, cập nhật trạng thái của LED cho nút nhấn ảo
+
+// Biến kiểm soát Timer
+bool is_timer_on;          // is_timer_on = 1, đèn sáng theo cài đặt của Timer
 
 // #########################################################################################################
 void setup() {
   Serial.begin(115200);
   delay(100);
 
+  // Khởi tạo chân cho LED và cảm biến
   pinMode(LED_PIN, OUTPUT);
   pinMode(LED2_PIN, OUTPUT);
   pinMode(LED3_PIN, OUTPUT);
-
   pinMode(LIGHT_SENSOR_PIN, INPUT);
   pinMode(PIR_SENSOR_PIN, INPUT);
 
+  // Tắt tất cả LED
   digitalWrite(LED_PIN, LOW);
   digitalWrite(LED2_PIN, LOW);
   digitalWrite(LED3_PIN, LOW);
 
+  // Khởi tạo Blynk và Timer
   BlynkEdgent.begin();
   timer.setInterval(10000L, checkTime);
 }
 
-// #########################################################################################################
+
 void loop() {
     // led 1
   BlynkEdgent.run();
@@ -86,38 +98,37 @@ void loop() {
 
 // TODO: Sửa lại đọc giá trị của cảm biến chuyển động từ 0 đến 100
     // led 2 - light sensor
-  lightSensor = analogRead(LIGHT_SENSOR_PIN);  // doc gia tri cam bien 0-1023
+  lightSensor = analogRead(LIGHT_SENSOR_PIN);  // Đọc giá trị của cảm biến ánh sáng (0-1023)
   lightSensorPercentage = map(lightSensor, 0, 1023, 100, 0);
   Blynk.virtualWrite(LIGHT_SENSOR_DATASTREAM, lightSensorPercentage);
   if (lightSensorPercentage <= 20) {
-    digitalWrite(LED2_PIN, HIGH);
-  } else {  //nguoc lai
-    digitalWrite(LED2_PIN, LOW);
+    digitalWrite(LED2_PIN, HIGH);  // Nếu ánh sáng thấp, bật LED
+  } else {
+    digitalWrite(LED2_PIN, LOW);   // Ngược lại, tắt LED
   }
 
   // led 3 - pir sensor
   pirSensor = digitalRead(PIR_SENSOR_PIN);
   if(pirSensor == HIGH ) {
-    digitalWrite(LED3_PIN, HIGH);
+    digitalWrite(LED3_PIN, HIGH);  // Nếu phát hiện chuyển động, bật LED và gửi tín hiệu đến Blynk
     Blynk.virtualWrite(PIR_SENSOR_DATASTREAM, HIGH);
     delay(1000);
   } else {
-    digitalWrite(LED3_PIN, LOW);
+    digitalWrite(LED3_PIN, LOW);   // Ngược lại, tắt LED và gửi tín hiệu đến Blynk
     Blynk.virtualWrite(PIR_SENSOR_DATASTREAM, LOW);
   }  
 }
-
 
 // #########################################################################################################
 // Button (Integer): 0-1
 BLYNK_WRITE(LED_BUTTON_DATASTREAM) {
   int val = param.asInt();
-  // Nếu không trong thời gian của timer, có thể dùng nút nhấn để điều khiển led
+  // Nếu không trong thời gian của timer, có thể dùng nút nhấn để điều khiển LED
   if (is_timer_on == 0)
     button = val;
-  // khi đang trong thời gian của timer thì không thể nhấn nút ảo để điều khiển led
+  // khi đang trong thời gian của timer thì không thể nhấn nút ảo để điều khiển LED
   else
-    update_blynk_status = 1;  // cập nhật trạng thái của led cho nút ảo
+    update_blynk_status = 1;  // Cập nhật trạng thái của LED cho nút ảo
 }
 
 // Slider (Integer) 0 -> 255
@@ -132,11 +143,12 @@ BLYNK_WRITE(LED_SLIDER_DATASTREAM) {
 
 // Timer
 BLYNK_WRITE(LED_TIMER_DATASTREAM) {
-  unsigned char week_day;  // biến tạm thời xử lý trong hàm
+  unsigned char week_day;  // Biến tạm thời xử lý trong hàm
 
   TimeInputParam t(param);
 
   if (t.hasStartTime() && t.hasStopTime()) {
+    // Xử lý thông tin thời gian từ widget Timer
     timer_start = (t.getStartHour() * 60 * 60) + (t.getStartMinute() * 60) + t.getStartSecond();
     timer_stop = (t.getStopHour() * 60 * 60) + (t.getStopMinute() * 60) + t.getStopSecond();
 
@@ -160,24 +172,31 @@ BLYNK_WRITE(LED_TIMER_DATASTREAM) {
   }
 }
 
+
 // #########################################################################################################
+// Callback được gọi khi có sự thay đổi trong widget Internal RTC
 BLYNK_WRITE(InternalPinRTC) {
-  const unsigned long DEFAULT_TIME = 1357041600;  // Mốc thời gian mặc định 1/1/2013
+  const unsigned long DEFAULT_TIME = 1357041600;  // Mốc thời gian mặc định: 1/1/2013
   unsigned long blynkTime = param.asLong();
 
+  // Kiểm tra xem thời gian từ widget RTC có hợp lệ không
   if (blynkTime >= DEFAULT_TIME) {
+    // Cập nhật thời gian của thiết bị từ widget RTC
     setTime(blynkTime);
 
+    // Xác định ngày trong tuần
     day_of_week = weekday();
 
-    // 1-7: Thứ hai -> chủ nhật
+    // Chuyển đổi từ chuẩn 1-7 (Thứ hai -> Chủ nhật) thành 0-6 (Chủ nhật -> Thứ hai)
     if (day_of_week == 1)
       day_of_week = 7;
     else
       day_of_week -= 1;
 
+    // Cập nhật giây tính từ nửa đêm
     rtc_sec = (hour() * 60 * 60) + (minute() * 60) + second();
 
+    // In ra thông tin về thời gian
     Serial.println(blynkTime);
     Serial.println(String("RTC Server: ") + hour() + ":" + minute() + ":" + second());
     Serial.println(String("Day of Week: ") + weekday());
@@ -185,60 +204,62 @@ BLYNK_WRITE(InternalPinRTC) {
 }
 
 // #########################################################################################################
+// Callback được gọi khi thiết bị kết nối với server Blynk
 BLYNK_CONNECTED() {
+  // Gửi lệnh "rtc sync" để đồng bộ thời gian với server
   Blynk.sendInternal("rtc", "sync");
 }
 
 // #########################################################################################################
+// Callback được gọi trong hàm loop để đồng bộ thời gian với server Blynk
 void checkTime() {
   Blynk.sendInternal("rtc", "sync");
 }
 
 // #########################################################################################################
+// Hàm quản lý thời gian và trạng thái đèn LED
 void led_mng() {
   bool old_led_status;
   old_led_status = led;
 
-
+  // Kiểm tra xem có đang trong khoảng thời gian được đặt bởi timer không
   if (timer_start != 0xFFFF && timer_stop != 0xFFFF) {
-
     if (
       (
         (
           ((timer_start <= timer_stop) && (rtc_sec >= timer_start) && (rtc_sec < timer_stop))
           || ((timer_start >= timer_stop) && ((rtc_sec >= timer_start) || (rtc_sec < timer_stop))))
         && (weekday_option == 0x00 || (weekday_option & (0x01 << (day_of_week - 1)))))) {
-      is_timer_on = 1;
+      is_timer_on = 1;  // Nếu đang trong khoảng thời gian được đặt bởi timer, đèn sẽ sáng
     } else
-      is_timer_on = 0;
+      is_timer_on = 0;  // Ngược lại, đèn sẽ tắt
   } else
     is_timer_on = 0;
 
-
+  // Kiểm tra và cập nhật trạng thái của đèn và nút nhấn áo
   if (is_timer_on) {
-    led = 1;
-    button = 0;
+    led = 1;       // Nếu đang trong thời gian của timer, đèn sẽ sáng
+    button = 0;    // Không thể điều khiển đèn bằng nút nhấn áo khi đang trong thời gian của timer
   } else {
-    led = button;
+    led = button;  // Nếu không trong thời gian của timer, trạng thái của đèn sẽ được điều khiển bởi nút nhấn áo
   }
 
+  // Kiểm tra xem trạng thái của đèn có thay đổi hay không để cập nhật Blynk
   if (old_led_status != led)
     update_blynk_status = 1;
 
-  // HARDWARE CONTROL
+  // Kiểm soát trạng thái của đèn trên thiết bị
   if (led == 1) {
-    analogWrite(LED_PIN, slider);
+    analogWrite(LED_PIN, slider);  // Đèn sáng với độ sáng được điều chỉnh bởi slider
   } else {
-    digitalWrite(LED_PIN, LOW);
+    digitalWrite(LED_PIN, LOW);   // Đèn tắt
   }
-  // thay đổi trạng thái Led
 }
 
-// cập nhật trạng thái nút nhấn áo tương ứng với trạng thái của led
+// Hàm cập nhật trạng thái của nút nhấn áo tương ứng với trạng thái của đèn
 void blynk_update() {
   if (update_blynk_status) {
-    Blynk.virtualWrite(LED_BUTTON_DATASTREAM, led);
-    update_blynk_status = 0;  // đã update xong, chuyển về 0
+    Blynk.virtualWrite(LED_BUTTON_DATASTREAM, led);  // Cập nhật trạng thái của nút nhấn áo trên Blynk
+    update_blynk_status = 0;  // Đã cập nhật xong, chuyển về 0
   }
 }
-
