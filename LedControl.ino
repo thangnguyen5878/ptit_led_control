@@ -12,11 +12,12 @@
 // Định nghĩa các chân cho LED
 #define LED1_PIN D0  // Chân cho LED 1
 #define LED2_PIN D2 // Chân cho LED 2
-int LED3_PIN = 14; // Chân cho LED 3 (D5)
+#define LED3_PIN D5 // Chân cho LED 3
+
 
 // Định nghĩa các chân cho cảm biến
 #define LIGHT_SENSOR_PIN A0 // Chân cho cảm biến ánh sáng
-int PIR_SENSOR_PIN = 5;  // Chân cho cảm biến chuyển động (D1)
+#define PIR_SENSOR_PIN D1 // Chân cho cảm biến chuyển động (D1)
 
 // Định nghĩa các datastream trên Blynk
 #define LED_BUTTON_DATASTREAM V0  // Button Widget (Integer): 0-1
@@ -249,7 +250,7 @@ void led_mng() {
   // Nếu không thì trạng thái của LED 1 sẽ được điều khiển bằng nút nhấn áo
   if (is_timer_on) {
     led1 = 1;       
-    button = 0;   
+    // button = 0;   
   } else {
     led1 = button;  
   }
