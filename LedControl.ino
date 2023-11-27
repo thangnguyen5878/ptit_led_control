@@ -20,10 +20,15 @@ int PIR_SENSOR_PIN = 5;  // Chân cho cảm biến chuyển động (D1)
 
 // Định nghĩa các datastream trên Blynk
 #define LED_BUTTON_DATASTREAM V0  // Button Widget (Integer): 0-1
-#define LED_SLIDER_DATASTREAM V1  // Slider Widget (Integer): 1-255
+#define LED_SLIDER_DATASTREAM V1  // Slider Widget (Integer): 1-100
 #define LED_TIMER_DATASTREAM V2   // Timer Widget (String)
-#define LIGHT_SENSOR_DATASTREAM V3   // Widget cho cảm biến chuyển động (Integer): 0-1023
+
+#define LIGHT_SENSOR_DATASTREAM V3   // Widget cho cảm biến chuyển động (Integer): 0-100
 #define PIR_SENSOR_DATASTREAM V4  // Widget cho cảm biến ánh sáng (Integer): 0-1
+
+#define LED1_DATASTREAM V5  // LED 1 Widget (Integer): 0-1
+#define LED2_DATASTREAM V6  // LED 2 Widget (Integer): 0-1
+#define LED3_DATASTREAM V7  // LED 3 Widget (Integer): 0-1
 
 // Khai báo thư viện
 #include <ESP8266WiFi.h>
@@ -89,19 +94,21 @@ void loop() {
     led_mng();          // Quản lý trạng thái của LED
     blynk_update();     // Cập nhật trạng thái của LED 1 cho nút nhấn ảo trong ứng dụng Blynk
 
-// TODO: Sửa lại đọc giá trị của cảm biến ánh sáng từ 1 đến 100
+
     // 2. Chức năng với cảm biến ánh sáng
-    // Đọc giá trị của cảm biến ánh sáng (0-1023)
+    // Đọc giá trị của cảm biến ánh sáng
   lightSensor = analogRead(LIGHT_SENSOR_PIN);  
   // Chuyển thành đơn vị phần trăm
   lightSensorPercentage = map(lightSensor, 0, 1023, 100, 0);
     // Cập nhật LIGHT_SENSOR_DATASTREAM trên app Blynk
   Blynk.virtualWrite(LIGHT_SENSOR_DATASTREAM, lightSensorPercentage);
-  // Nếu giá trị của cảm biến ánh sáng từ 20% trở xuống, bật LED 2. Nếu không thì tắt LED 2
+  // Nếu giá trị của cảm biến ánh sáng từ 20 trở xuống, bật LED 2. Nếu không thì tắt LED 2
   if (lightSensorPercentage <= 20) {
     digitalWrite(LED2_PIN, HIGH);  
+    Blynk.virtualWrite(LED2_DATASTREAM, HIGH);
   } else {
-    digitalWrite(LED2_PIN, LOW);   
+    digitalWrite(LED2_PIN, LOW);  
+    Blynk.virtualWrite(LED2_DATASTREAM, LOW); 
   }
 
   // 3. Chức năng với cảm biến chuyển động 
@@ -111,15 +118,17 @@ void loop() {
   if(pirSensor == HIGH) {
     digitalWrite(LED3_PIN, HIGH);  
     Blynk.virtualWrite(PIR_SENSOR_DATASTREAM, HIGH);
+    Blynk.virtualWrite(LED3_DATASTREAM, HIGH);
     delay(1000); // Delay 1 giây
   } else {
     // Nếu không phát hiện chuyển động, tắt LED 3 và cập nhật PIR_SENSOR_DATASTREAM trên app Blynk
     digitalWrite(LED3_PIN, LOW);   
     Blynk.virtualWrite(PIR_SENSOR_DATASTREAM, LOW);
+    Blynk.virtualWrite(LED3_DATASTREAM, LOW);
   }  
 }
 
-// Button (Integer): 0-1
+// Cập nhật giá trị của nút nhấn ảo (0-1) điều khiển LED 1
 BLYNK_WRITE(LED_BUTTON_DATASTREAM) {
   int val = param.asInt();
   // Nếu không trong thời gian của timer, có thể dùng nút nhấn ảo để điều khiển LED 1
@@ -130,7 +139,7 @@ BLYNK_WRITE(LED_BUTTON_DATASTREAM) {
     update_blynk_status = 1;  // Cập nhật trạng thái của LED 1 cho nút nhấn ảo
 }
 
-// Slider (Integer) 0 -> 255
+// Cập nhật giá trị của Slider (1-100) điều khiển LED 2
 BLYNK_WRITE(LED_SLIDER_DATASTREAM) {
   // Đọc giá trị của slider trên app Blynk
   slider = param.asInt();
@@ -140,7 +149,7 @@ BLYNK_WRITE(LED_SLIDER_DATASTREAM) {
     analogWrite(LED1_PIN, slider);
 }
 
-// Timer
+// Cập nhật giá trị của Timer điều khiển LED 1
 BLYNK_WRITE(LED_TIMER_DATASTREAM) {
   unsigned char week_day;  // Biến tạm thời xử lý trong hàm
 
@@ -263,7 +272,8 @@ void led_mng() {
 void blynk_update() {
   if (update_blynk_status) {
     // Cập nhật trạng thái của nút nhấn áo trên Blynk
-    Blynk.virtualWrite(LED_BUTTON_DATASTREAM, led1);  
+    Blynk.virtualWrite(LED_BUTTON_DATASTREAM, led1); 
+    Blynk.virtualWrite(LED1_DATASTREAM, led1);  
     // Đã cập nhật xong, chuyển về 0
     update_blynk_status = 0;  
   }
