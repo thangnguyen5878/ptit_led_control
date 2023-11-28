@@ -7,10 +7,12 @@
 
 ### Giao diện người dùng trên Web
 
-![](https://i.imgur.com/1G1Oi3Q.png)
+<img src="https://i.imgur.com/1G1Oi3Q.png" width="700">
 
 ### Mô hình phần cứng
 
-![](https://i.imgur.com/U4Idc36.png)
+<img src="https://i.imgur.com/U4Idc36.png" width="700">
 
-![](https://i.imgur.com/K7ZsI5V.png)
+<img src="https://i.imgur.com/K7ZsI5V.png" width="700">
+
+
